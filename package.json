@@ -1,0 +1,32 @@
+{
+    "name": "pdf-live-viewer",
+    "version": "1.0.0",
+    "description": "PDF管理ビューア",
+    "scripts": {
+        "test": "node --test --test-reporter=spec",
+        "start": "node src/server.ts",
+        "prestart": "npm run build",
+        "dev": "npm run build && node --watch src/server.ts",
+        "build": "tsc -p tsconfig.client.json",
+        "typecheck": "tsc --noEmit",
+        "format": "biome check --write .",
+        "lint": "biome check . && tsc --noEmit"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "MIT",
+    "type": "module",
+    "private": true,
+    "engines": {
+        "node": ">=22.18"
+    },
+    "dependencies": {
+        "pdf-lib": "^1.17.1",
+        "pdfjs-dist": "^6.4.299"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.6.4",
+        "@types/node": "^24.19.2",
+        "typescript": "~5.9"
+    }
+}

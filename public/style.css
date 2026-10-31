@@ -1,0 +1,219 @@
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    font:
+        14px / 1.5 system-ui,
+        sans-serif;
+    color: #111;
+}
+header {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 8px 12px;
+    border-bottom: 1px solid #ddd;
+}
+.muted {
+    color: #666;
+    font-size: 12px;
+}
+header a {
+    color: inherit;
+    text-decoration: none;
+}
+#manage:not([hidden]),
+#view:not([hidden]) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+#crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    font-size: 13px;
+}
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+#search {
+    flex: 1;
+    min-width: 0;
+}
+.tree {
+    flex: 1;
+    overflow: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid #eee;
+}
+.item > span {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.item.active {
+    background: #eef2ff;
+}
+.item small {
+    display: block;
+    color: #666;
+    font-size: 12px;
+}
+#toolbar:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid #ddd;
+}
+.title {
+    font-weight: 600;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#viewer {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: #f3f4f6;
+    padding: 24px;
+}
+.page {
+    position: relative;
+    margin: 0 auto 16px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.page canvas {
+    display: block;
+}
+canvas.sketch {
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+}
+#banner:not([hidden]) {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #fef3c7;
+}
+button,
+.btn {
+    font: inherit;
+    padding: 4px 10px;
+    border: 1px solid #bbb;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+button.active {
+    background: #1f2937;
+    color: #fff;
+    border-color: #1f2937;
+}
+button.danger {
+    color: #b91c1c;
+    border-color: #b91c1c;
+}
+.item button {
+    padding: 2px 6px;
+    font-size: 12px;
+}
+#modal:not([hidden]) {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+}
+.modal-body {
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+    min-width: 300px;
+    max-height: 80vh;
+    overflow: auto;
+}
+.modal-body label {
+    display: block;
+    padding: 2px 0;
+}
+[hidden] {
+    display: none;
+}
+
+/* スマホ・タブレット: ツールバーは横スクロール、余白と行の高さを詰める */
+@media (max-width: 720px) {
+    header {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 10px;
+    }
+    .row {
+        flex-wrap: wrap;
+        padding: 6px 8px;
+    }
+    #toolbar:not([hidden]) {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 4px 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+    #toolbar > * {
+        flex: 0 0 auto;
+    }
+    .title {
+        max-width: 40vw;
+    }
+    #viewer {
+        padding: 8px;
+    }
+    #crumbs {
+        font-size: 12px;
+    }
+    .item {
+        padding: 10px 8px;
+    }
+    button,
+    .btn {
+        padding: 6px 10px;
+    }
+    .item button {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    .modal-body {
+        min-width: 0;
+        width: min(92vw, 420px);
+    }
+}

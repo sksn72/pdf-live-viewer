@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Live Viewer</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#1f2937">
+<script type="importmap">
+{ "imports": { "pdfjs-dist": "/vendor/pdfjs/build/pdf.mjs", "pdf-lib": "/vendor/pdf-lib/pdf-lib.esm.min.js" } }
+</script>
+</head>
+<body>
+<header>
+  <strong><a href="#/">PDF Live Viewer</a></strong>
+  <span id="status" class="muted"></span>
+</header>
+<section id="manage">
+  <div class="row"><nav id="crumbs"></nav></div>
+  <div class="row">
+    <button id="newFolder" type="button">＋フォルダ</button>
+    <label class="btn">PDFを追加<input id="file" type="file" accept="application/pdf" multiple hidden></label>
+    <button id="trashToggle" type="button">ゴミ箱</button>
+    <input id="search" type="search" placeholder="PDF名で検索" aria-label="PDF名で検索">
+  </div>
+  <ul id="tree" class="tree"></ul>
+</section>
+<section id="view" hidden>
+  <div id="toolbar">
+    <button id="back" type="button">← 管理</button>
+    <span id="title" class="title"></span>
+    <select id="version"></select>
+    <button id="deleteVersion" type="button" class="danger">この版を削除</button>
+    <span id="pageinfo"></span>
+    <button id="zoomOut" type="button">−</button><span id="zoom"></span><button id="zoomIn" type="button">＋</button>
+    <button id="sketchToggle" type="button">スケッチ: オフ</button>
+    <input id="color" type="color" value="#e11d48">
+    <input id="width" type="range" min="1" max="12" step="1" value="3">
+    <button id="eraser" type="button">ペンモード</button>
+    <button id="undo" type="button">戻す</button>
+    <button id="redo" type="button">やり直す</button>
+    <button id="carry" type="button">前の版から引き継ぐ</button>
+    <button id="export" type="button">スケッチ付きPDF出力</button>
+    <label class="btn">版更新<input id="newVersion" type="file" accept="application/pdf" hidden></label>
+    <button id="delete" type="button" class="danger">削除</button>
+  </div>
+  <div id="banner" hidden></div>
+  <div id="viewer"></div>
+</section>
+<div id="modal" hidden><div class="modal-body"></div></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
