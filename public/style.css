@@ -118,6 +118,9 @@ canvas.sketch {
     inset: 0;
     touch-action: none;
 }
+canvas.sketch[hidden] {
+    display: none;
+}
 #banner:not([hidden]) {
     display: flex;
     gap: 12px;

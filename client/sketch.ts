@@ -39,6 +39,7 @@ export function createSketchLayer({
         erase: false,
     };
     let active: { entry: PageEntry; stroke: Stroke } | null = null;
+    let visible = true;
 
     function reset() {
         pages.clear();
@@ -59,6 +60,7 @@ export function createSketchLayer({
         const dpr = window.devicePixelRatio || 1;
         const canvas = document.createElement("canvas");
         canvas.className = "sketch";
+        canvas.hidden = !visible;
         canvas.width = Math.floor(cssW * dpr);
         canvas.height = Math.floor(cssH * dpr);
         canvas.style.width = `${cssW}px`;
@@ -188,6 +190,11 @@ export function createSketchLayer({
             entry.canvas.style.pointerEvents = tool.on ? "auto" : "none";
     }
 
+    function setVisible(value: boolean) {
+        visible = value;
+        for (const entry of pages.values()) entry.canvas.hidden = !value;
+    }
+
     return {
         reset,
         attach,
@@ -196,6 +203,7 @@ export function createSketchLayer({
         busy,
         snapshot,
         setTool,
+        setVisible,
         undo,
         redo,
         tool,

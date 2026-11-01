@@ -78,6 +78,16 @@ export function createView({ root }: { root: HTMLElement }) {
         b.onclick = null;
     }
 
+    let sketchVisible = true;
+    function setSketchVisible(visible: boolean) {
+        sketchVisible = visible;
+        sketch.setVisible(visible);
+        $("sketchVisible").textContent =
+            `スケッチ表示: ${visible ? "オン" : "オフ"}`;
+        $("sketchVisible").classList.toggle("active", visible);
+    }
+    setSketchVisible(true);
+
     function renderVersions() {
         const sel = $<HTMLSelectElement>("version");
         sel.textContent = "";
@@ -145,10 +155,13 @@ export function createView({ root }: { root: HTMLElement }) {
 
     $("sketchToggle").onclick = () => {
         const on = !sketch.tool.on;
+        if (on && !sketchVisible) setSketchVisible(true);
         sketch.setTool({ on });
         $("sketchToggle").textContent = `スケッチ: ${on ? "オン" : "オフ"}`;
         $("sketchToggle").classList.toggle("active", on);
     };
+
+    $("sketchVisible").onclick = () => setSketchVisible(!sketchVisible);
 
     $<HTMLInputElement>("color").oninput = (e) => {
         sketch.setTool({
