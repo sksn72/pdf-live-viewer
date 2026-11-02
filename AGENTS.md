@@ -60,6 +60,7 @@ Approve? yes/no
 ```
 
 #### Conventional Commit のタイプ
+
 - `feat`: 新機能
 - `fix`: バグ修正
 - `docs`: ドキュメントのみの変更
@@ -74,6 +75,7 @@ Approve? yes/no
 ### 4. ユーザーの回答を処理する
 
 - **yes** の場合: 記載されたファイルだけをステージし、コミットを実行
+
   ```bash
   git add path/to/file-one.ext path/to/file-two.ext
   git commit -m "commit message here"
