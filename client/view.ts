@@ -1,6 +1,7 @@
 import { exportAnnotated } from "./export.js";
 import { createSketchLayer } from "./sketch.js";
 import type { Stroke } from "./sketch-model.js";
+import { matchShortcut } from "./ui.js";
 import { createViewer } from "./viewer.js";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -149,27 +150,29 @@ export function createView({ root }: { root: HTMLElement }) {
         if (!res.ok) setStatus(`アップロード失敗 (${res.status})`);
     }
 
-    $("back").onclick = goManage;
-    $("zoomIn").onclick = () => viewer.zoom(1.2);
-    $("zoomOut").onclick = () => viewer.zoom(1 / 1.2);
-
-    $("sketchToggle").onclick = () => {
-        const on = !sketch.tool.on;
+    function setSketchOn(on: boolean) {
         if (on && !sketchVisible) setSketchVisible(true);
         sketch.setTool({ on });
         $("sketchToggle").textContent = `スケッチ: ${on ? "オン" : "オフ"}`;
         $("sketchToggle").classList.toggle("active", on);
-    };
+    }
 
+    function setEraserMode(erase: boolean) {
+        sketch.setTool({ erase });
+        $("eraser").textContent = `${erase ? "消しゴムモード" : "ペンモード"}`;
+        $("eraser").classList.toggle("active", erase);
+    }
+
+    $("back").onclick = goManage;
+    $("zoomIn").onclick = () => viewer.zoom(1.2);
+    $("zoomOut").onclick = () => viewer.zoom(1 / 1.2);
+
+    $("sketchToggle").onclick = () => setSketchOn(!sketch.tool.on);
     $("sketchVisible").onclick = () => setSketchVisible(!sketchVisible);
 
     $<HTMLInputElement>("color").oninput = (e) => {
-        sketch.setTool({
-            color: (e.target as HTMLInputElement).value,
-            erase: false,
-        });
-        $("eraser").textContent = "ペンモード";
-        $("eraser").classList.remove("active");
+        sketch.setTool({ color: (e.target as HTMLInputElement).value });
+        setEraserMode(false);
     };
 
     $<HTMLInputElement>("width").oninput = (e) =>
@@ -177,15 +180,53 @@ export function createView({ root }: { root: HTMLElement }) {
             width: Number((e.target as HTMLInputElement).value) * 0.0012,
         });
 
-    $("eraser").onclick = () => {
-        const erase = !sketch.tool.erase;
-        sketch.setTool({ erase });
-        $("eraser").textContent = `${erase ? "消しゴムモード" : "ペンモード"}`;
-        $("eraser").classList.toggle("active", erase);
-    };
+    $("eraser").onclick = () => setEraserMode(!sketch.tool.erase);
 
     $("undo").onclick = () => sketch.undo(viewer.currentPage());
     $("redo").onclick = () => sketch.redo(viewer.currentPage());
+
+    document.addEventListener("keydown", (e) => {
+        if (!state.id || !$("modal").hidden) return;
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        if (
+            target &&
+            (target.isContentEditable ||
+                target.closest("input, select, textarea"))
+        )
+            return;
+        const action = matchShortcut(
+            e.key,
+            e.ctrlKey || e.metaKey,
+            e.shiftKey,
+            e.altKey,
+        );
+        if (!action) return;
+        const page = viewer.currentPage();
+        if (sketch.busy(page)) return;
+        e.preventDefault();
+        switch (action) {
+            case "undo":
+                sketch.undo(page);
+                break;
+            case "redo":
+                sketch.redo(page);
+                break;
+            case "pen":
+                if (!sketch.tool.on) setSketchOn(true);
+                setEraserMode(false);
+                break;
+            case "eraser":
+                if (!sketch.tool.on) setSketchOn(true);
+                setEraserMode(true);
+                break;
+            case "zoomIn":
+                viewer.zoom(1.2);
+                break;
+            case "zoomOut":
+                viewer.zoom(1 / 1.2);
+                break;
+        }
+    });
 
     $("delete").onclick = async () => {
         if (!state.id) return;

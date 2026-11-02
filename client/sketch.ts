@@ -7,6 +7,7 @@ import {
     renderStrokes,
     undoEntry,
 } from "./sketch-model.js";
+import { brushCursor } from "./ui.js";
 
 type PageEntry = Entry<Stroke> & {
     page: number;
@@ -51,6 +52,13 @@ export function createSketchLayer({
         renderStrokes(entry.ctx, entry.strokes, entry.cssW, entry.cssH);
     }
 
+    // shortcut: CSSカーソル画像は約128pxを超えると無視される環境がある。必要になったらoverlayに変える
+    function applyCursor(entry: PageEntry) {
+        entry.canvas.style.cursor = tool.on
+            ? brushCursor(tool.width * entry.cssW, tool.color, tool.erase)
+            : "default";
+    }
+
     function attach(
         pageNumber: number,
         wrap: HTMLElement,
@@ -78,6 +86,7 @@ export function createSketchLayer({
             undone: [],
         };
         pages.set(pageNumber, entry);
+        applyCursor(entry);
         canvas.addEventListener("pointerdown", (e) => down(e, entry));
         canvas.addEventListener("pointermove", (e) => move(e, entry));
         canvas.addEventListener("pointerup", (e) => up(e, entry));
@@ -186,8 +195,10 @@ export function createSketchLayer({
 
     function setTool(patch: Partial<SketchTool>) {
         Object.assign(tool, patch);
-        for (const entry of pages.values())
+        for (const entry of pages.values()) {
             entry.canvas.style.pointerEvents = tool.on ? "auto" : "none";
+            applyCursor(entry);
+        }
     }
 
     function setVisible(value: boolean) {

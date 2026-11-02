@@ -13,6 +13,7 @@ const ASSETS = [
     "/viewer.js",
     "/sketch.js",
     "/sketch-model.js",
+    "/ui.js",
     "/export.js",
     "/manifest.webmanifest",
     "/icon.svg",

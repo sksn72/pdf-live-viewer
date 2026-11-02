@@ -2,6 +2,7 @@ import * as pdfjs from "pdfjs-dist";
 
 import type { SketchLayer } from "./sketch.js";
 import type { StrokeMap } from "./sketch-model.js";
+import { wheelZoomFactor } from "./ui.js";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/build/pdf.worker.mjs";
 
@@ -28,6 +29,8 @@ export function createViewer({
     const wrappers: HTMLElement[] = [];
     let pdfId: string | null = null;
     let version: number | null = null;
+    let wheelTimer = 0;
+    let wheelDelta = 0;
 
     function anchor(): Anchor {
         const y = root.scrollTop + 2;
@@ -92,6 +95,9 @@ export function createViewer({
     }
 
     async function open(id: string, v: number) {
+        window.clearTimeout(wheelTimer);
+        wheelTimer = 0;
+        wheelDelta = 0;
         const task = pdfjs.getDocument({
             url: `/api/pdfs/${id}/versions/${v}`,
             cMapUrl: CMAP_URL,
@@ -129,10 +135,37 @@ export function createViewer({
         });
     });
 
+    // 連続するホイールで全ページ再描画が重ならないよう、停止後にまとめて倍率を適用する
+    root.addEventListener(
+        "wheel",
+        (e) => {
+            if (!e.ctrlKey || !doc) return;
+            e.preventDefault();
+            const unit =
+                e.deltaMode === 1
+                    ? 16
+                    : e.deltaMode === 2
+                      ? root.clientHeight
+                      : 1;
+            wheelDelta += e.deltaY * unit;
+            window.clearTimeout(wheelTimer);
+            wheelTimer = window.setTimeout(() => {
+                const delta = wheelDelta;
+                wheelDelta = 0;
+                wheelTimer = 0;
+                if (delta !== 0) void zoom(wheelZoomFactor(delta));
+            }, 80);
+        },
+        { passive: false },
+    );
+
     return {
         open,
         zoom,
         close() {
+            window.clearTimeout(wheelTimer);
+            wheelTimer = 0;
+            wheelDelta = 0;
             if (loadingTask) loadingTask.destroy();
             loadingTask = null;
             doc = null;
