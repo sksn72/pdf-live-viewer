@@ -1,15 +1,17 @@
-import type { Entry, Stroke, StrokeMap } from "./sketch-model.js";
+import type { Annotation, Entry, Stroke, StrokeMap } from "./sketch-model.js";
 import {
     appendPoint,
+    createEntry,
     createStroke,
     drawStrokeSegment,
+    pushHistory,
     redoEntry,
-    renderStrokes,
+    renderAnnotations,
     undoEntry,
 } from "./sketch-model.js";
 import { brushCursor } from "./ui.js";
 
-type PageEntry = Entry<Stroke> & {
+type PageEntry = Entry<Annotation> & {
     page: number;
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -29,7 +31,7 @@ export function createSketchLayer({
     save,
     onChange = () => {},
 }: {
-    save: (page: number, strokes: Stroke[]) => void;
+    save: (page: number, strokes: Annotation[]) => void;
     onChange?: () => void;
 }) {
     const pages = new Map<number, PageEntry>();
@@ -49,7 +51,7 @@ export function createSketchLayer({
 
     function paint(entry: PageEntry) {
         entry.ctx.clearRect(0, 0, entry.cssW, entry.cssH);
-        renderStrokes(entry.ctx, entry.strokes, entry.cssW, entry.cssH);
+        renderAnnotations(entry.ctx, entry.items, entry.cssW, entry.cssH);
     }
 
     // shortcut: CSSカーソル画像は約128pxを超えると無視される環境がある。必要になったらoverlayに変える
@@ -82,8 +84,7 @@ export function createSketchLayer({
             ctx,
             cssW,
             cssH,
-            strokes: [],
-            undone: [],
+            ...createEntry<Annotation>(),
         };
         pages.set(pageNumber, entry);
         applyCursor(entry);
@@ -97,18 +98,28 @@ export function createSketchLayer({
     function setData(map: StrokeMap | undefined) {
         for (const entry of pages.values()) {
             const strokes = map?.[entry.page];
-            entry.strokes = Array.isArray(strokes) ? strokes : [];
-            entry.undone = [];
+            entry.items.splice(
+                0,
+                entry.items.length,
+                ...(Array.isArray(strokes) ? strokes : []),
+            );
+            entry.past = [];
+            entry.future = [];
             paint(entry);
         }
     }
 
     // 他端末の保存をそのまま反映する（描画中のページは呼び出し側で弾く）
-    function setPage(pageNumber: number, strokes: Stroke[]) {
+    function setPage(pageNumber: number, strokes: Annotation[]) {
         const entry = pages.get(pageNumber);
         if (!entry) return;
-        entry.strokes = Array.isArray(strokes) ? strokes : [];
-        entry.undone = [];
+        entry.items.splice(
+            0,
+            entry.items.length,
+            ...(Array.isArray(strokes) ? strokes : []),
+        );
+        entry.past = [];
+        entry.future = [];
         paint(entry);
     }
 
@@ -118,7 +129,7 @@ export function createSketchLayer({
 
     function snapshot(): StrokeMap {
         return Object.fromEntries(
-            [...pages].map(([p, entry]) => [p, entry.strokes]),
+            [...pages].map(([p, entry]) => [p, entry.items]),
         );
     }
 
@@ -170,10 +181,10 @@ export function createSketchLayer({
             appendPoint(s, s.pts[0][0] + 0.0002, s.pts[0][1], s.pts[0][2]);
             drawStrokeSegment(entry.ctx, s, 1, entry.cssW, entry.cssH);
         }
-        entry.strokes.push(s);
-        entry.undone = [];
+        pushHistory(entry);
+        entry.items.push(s);
         active = null;
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
         onChange();
     }
 
@@ -182,7 +193,7 @@ export function createSketchLayer({
         if (!entry) return;
         undoEntry(entry);
         paint(entry);
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
     }
 
     function redo(pageNumber: number) {
@@ -190,7 +201,7 @@ export function createSketchLayer({
         if (!entry) return;
         redoEntry(entry);
         paint(entry);
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
     }
 
     function setTool(patch: Partial<SketchTool>) {
