@@ -351,7 +351,7 @@ export function createSketchLayer({
     function setTool(patch: Partial<SketchTool>) {
         Object.assign(tool, patch);
         if (patch.mode) tool.erase = patch.mode === "eraser";
-        else if (patch.erase !== undefined && tool.mode !== "text") {
+        else if (patch.erase !== undefined) {
             tool.mode = patch.erase ? "eraser" : "pen";
         }
         for (const entry of pages.values()) {
