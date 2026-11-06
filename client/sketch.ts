@@ -1,17 +1,28 @@
-import type { Entry, Stroke, StrokeMap } from "./sketch-model.js";
+import type {
+    Annotation,
+    Entry,
+    Stroke,
+    StrokeMap,
+    TextBox,
+} from "./sketch-model.js";
 import {
     appendPoint,
+    createEntry,
     createStroke,
+    createTextBox,
     drawStrokeSegment,
+    hitText,
+    pushHistory,
     redoEntry,
-    renderStrokes,
+    renderAnnotations,
     undoEntry,
 } from "./sketch-model.js";
 import { brushCursor } from "./ui.js";
 
-type PageEntry = Entry<Stroke> & {
+type PageEntry = Entry<Annotation> & {
     page: number;
     canvas: HTMLCanvasElement;
+    wrap: HTMLElement;
     ctx: CanvasRenderingContext2D;
     cssW: number;
     cssH: number;
@@ -20,43 +31,65 @@ type PageEntry = Entry<Stroke> & {
 export type SketchLayer = ReturnType<typeof createSketchLayer>;
 export type SketchTool = {
     on: boolean;
+    mode: "pen" | "eraser" | "text";
     color: string;
     width: number;
     erase: boolean;
+    textColor: string;
+    textSize: number;
 };
 
 export function createSketchLayer({
     save,
     onChange = () => {},
 }: {
-    save: (page: number, strokes: Stroke[]) => void;
+    save: (page: number, strokes: Annotation[]) => void;
     onChange?: () => void;
 }) {
     const pages = new Map<number, PageEntry>();
     const tool: SketchTool = {
         on: false,
+        mode: "pen",
         color: "#e11d48",
         width: 0.0036,
         erase: false,
+        textColor: "#1f2937",
+        textSize: 0.02,
     };
     let active: { entry: PageEntry; stroke: Stroke } | null = null;
+    let editing: {
+        entry: PageEntry;
+        textarea: HTMLTextAreaElement;
+        target: TextBox;
+        isNew: boolean;
+    } | null = null;
     let visible = true;
 
     function reset() {
+        if (editing?.textarea.parentElement) editing.textarea.remove();
+        editing = null;
         pages.clear();
         active = null;
     }
 
     function paint(entry: PageEntry) {
         entry.ctx.clearRect(0, 0, entry.cssW, entry.cssH);
-        renderStrokes(entry.ctx, entry.strokes, entry.cssW, entry.cssH);
+        renderAnnotations(entry.ctx, entry.items, entry.cssW, entry.cssH);
     }
 
     // shortcut: CSSカーソル画像は約128pxを超えると無視される環境がある。必要になったらoverlayに変える
     function applyCursor(entry: PageEntry) {
-        entry.canvas.style.cursor = tool.on
-            ? brushCursor(tool.width * entry.cssW, tool.color, tool.erase)
-            : "default";
+        if (!tool.on) {
+            entry.canvas.style.cursor = "default";
+        } else if (tool.mode === "text") {
+            entry.canvas.style.cursor = "text";
+        } else {
+            entry.canvas.style.cursor = brushCursor(
+                tool.width * entry.cssW,
+                tool.color,
+                tool.erase,
+            );
+        }
     }
 
     function attach(
@@ -79,11 +112,11 @@ export function createSketchLayer({
         const entry: PageEntry = {
             page: pageNumber,
             canvas,
+            wrap,
             ctx,
             cssW,
             cssH,
-            strokes: [],
-            undone: [],
+            ...createEntry<Annotation>(),
         };
         pages.set(pageNumber, entry);
         applyCursor(entry);
@@ -97,34 +130,156 @@ export function createSketchLayer({
     function setData(map: StrokeMap | undefined) {
         for (const entry of pages.values()) {
             const strokes = map?.[entry.page];
-            entry.strokes = Array.isArray(strokes) ? strokes : [];
-            entry.undone = [];
+            entry.items.splice(
+                0,
+                entry.items.length,
+                ...(Array.isArray(strokes) ? strokes : []),
+            );
+            entry.past = [];
+            entry.future = [];
             paint(entry);
         }
     }
 
     // 他端末の保存をそのまま反映する（描画中のページは呼び出し側で弾く）
-    function setPage(pageNumber: number, strokes: Stroke[]) {
+    function setPage(pageNumber: number, strokes: Annotation[]) {
         const entry = pages.get(pageNumber);
         if (!entry) return;
-        entry.strokes = Array.isArray(strokes) ? strokes : [];
-        entry.undone = [];
+        entry.items.splice(
+            0,
+            entry.items.length,
+            ...(Array.isArray(strokes) ? strokes : []),
+        );
+        entry.past = [];
+        entry.future = [];
         paint(entry);
     }
 
     function busy(pageNumber: number) {
-        return active?.entry.page === pageNumber;
+        return (
+            active?.entry.page === pageNumber ||
+            editing?.entry.page === pageNumber
+        );
+    }
+
+    function closeTextEditor(commit: boolean) {
+        if (!editing) return;
+        const { entry, textarea, target, isNew } = editing;
+        editing = null;
+        const value = textarea.value;
+        textarea.remove();
+        if (!commit) return;
+        if (value.trim() === "") {
+            if (!isNew) {
+                const idx = entry.items.findIndex(
+                    (it) =>
+                        (it as TextBox).t === "text" &&
+                        (it as TextBox).id === target.id,
+                );
+                if (idx >= 0) {
+                    pushHistory(entry);
+                    entry.items.splice(idx, 1);
+                    paint(entry);
+                    save(entry.page, entry.items);
+                    onChange();
+                }
+            }
+            return;
+        }
+        const next: TextBox = { ...target, text: value };
+        pushHistory(entry);
+        if (isNew) {
+            entry.items.push(next);
+        } else {
+            const idx = entry.items.findIndex(
+                (it) =>
+                    (it as TextBox).t === "text" &&
+                    (it as TextBox).id === target.id,
+            );
+            if (idx >= 0) entry.items[idx] = next;
+            else entry.items.push(next);
+        }
+        paint(entry);
+        save(entry.page, entry.items);
+        onChange();
+    }
+
+    function openTextEditor(entry: PageEntry, target: TextBox, isNew: boolean) {
+        if (editing) closeTextEditor(true);
+        const textarea = document.createElement("textarea");
+        textarea.className = "text-edit";
+        textarea.rows = 1;
+        textarea.maxLength = 200;
+        textarea.wrap = "off";
+        textarea.value = target.text;
+        textarea.style.left = `${target.x * entry.cssW}px`;
+        textarea.style.top = `${target.y * entry.cssH}px`;
+        textarea.style.fontSize = `${target.s * entry.cssW}px`;
+        textarea.style.color = target.c;
+        textarea.spellcheck = false;
+        editing = { entry, textarea, target, isNew };
+        textarea.addEventListener("keydown", (e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                closeTextEditor(true);
+            } else if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                const start = textarea.selectionStart ?? textarea.value.length;
+                textarea.setRangeText(
+                    "\n",
+                    start,
+                    textarea.selectionEnd ?? start,
+                );
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                closeTextEditor(false);
+            }
+        });
+        textarea.addEventListener("blur", () => closeTextEditor(true));
+        entry.wrap.append(textarea);
+        textarea.focus();
+        textarea.setSelectionRange(
+            textarea.value.length,
+            textarea.value.length,
+        );
     }
 
     function snapshot(): StrokeMap {
         return Object.fromEntries(
-            [...pages].map(([p, entry]) => [p, entry.strokes]),
+            [...pages].map(([p, entry]) => [p, entry.items]),
         );
     }
 
     function down(e: PointerEvent, entry: PageEntry) {
         if (!tool.on) return;
         e.preventDefault();
+        if (tool.mode === "text") {
+            const rect = entry.canvas.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            const boxes = entry.items.filter(
+                (it): it is TextBox => (it as TextBox).t === "text",
+            );
+            for (let i = boxes.length - 1; i >= 0; i--) {
+                if (
+                    hitText(boxes[i], x, y, entry.cssW, entry.cssH, entry.ctx)
+                ) {
+                    openTextEditor(entry, boxes[i], false);
+                    return;
+                }
+            }
+            const box = createTextBox({
+                x,
+                y,
+                s: tool.textSize,
+                color: tool.textColor,
+                text: "",
+            });
+            openTextEditor(entry, box, true);
+            return;
+        }
         entry.canvas.setPointerCapture(e.pointerId);
         active = {
             entry,
@@ -170,10 +325,10 @@ export function createSketchLayer({
             appendPoint(s, s.pts[0][0] + 0.0002, s.pts[0][1], s.pts[0][2]);
             drawStrokeSegment(entry.ctx, s, 1, entry.cssW, entry.cssH);
         }
-        entry.strokes.push(s);
-        entry.undone = [];
+        pushHistory(entry);
+        entry.items.push(s);
         active = null;
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
         onChange();
     }
 
@@ -182,7 +337,7 @@ export function createSketchLayer({
         if (!entry) return;
         undoEntry(entry);
         paint(entry);
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
     }
 
     function redo(pageNumber: number) {
@@ -190,11 +345,15 @@ export function createSketchLayer({
         if (!entry) return;
         redoEntry(entry);
         paint(entry);
-        save(entry.page, entry.strokes);
+        save(entry.page, entry.items);
     }
 
     function setTool(patch: Partial<SketchTool>) {
         Object.assign(tool, patch);
+        if (patch.mode) tool.erase = patch.mode === "eraser";
+        else if (patch.erase !== undefined) {
+            tool.mode = patch.erase ? "eraser" : "pen";
+        }
         for (const entry of pages.values()) {
             entry.canvas.style.pointerEvents = tool.on ? "auto" : "none";
             applyCursor(entry);
@@ -203,6 +362,7 @@ export function createSketchLayer({
 
     function setVisible(value: boolean) {
         visible = value;
+        if (!value && editing) closeTextEditor(false);
         for (const entry of pages.values()) entry.canvas.hidden = !value;
     }
 

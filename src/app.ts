@@ -12,7 +12,7 @@ import path from "node:path";
 
 import type { DatabaseSync } from "node:sqlite";
 
-import { validateStrokes } from "../client/sketch-model.ts";
+import { validateAnnotations } from "../client/sketch-model.ts";
 import * as db from "./db.ts";
 
 const ROOT = process.cwd();
@@ -287,7 +287,7 @@ export function createApp({ dataDir }: { dataDir: string }) {
         );
         if (mSketch && m === "PUT") {
             const body = await readJson(req);
-            if (!validateStrokes(body.strokes))
+            if (!validateAnnotations(body.strokes))
                 throw new HttpError(400, "invalid strokes");
             db.putSketch(
                 database,

@@ -1,6 +1,6 @@
 import { exportAnnotated } from "./export.js";
 import { createSketchLayer } from "./sketch.js";
-import type { Stroke } from "./sketch-model.js";
+import type { Annotation } from "./sketch-model.js";
 import { matchShortcut } from "./ui.js";
 import { createViewer } from "./viewer.js";
 
@@ -52,7 +52,7 @@ export function createView({ root }: { root: HTMLElement }) {
         $("status").textContent = text;
     }
 
-    async function saveSketch(page: number, strokes: Stroke[]) {
+    async function saveSketch(page: number, strokes: Annotation[]) {
         if (!state.id) return;
         const res = await fetch(
             `/api/pdfs/${state.id}/versions/${state.version}/sketches/${page}`,
@@ -159,8 +159,16 @@ export function createView({ root }: { root: HTMLElement }) {
 
     function setEraserMode(erase: boolean) {
         sketch.setTool({ erase });
+        $("textMode").classList.remove("active");
         $("eraser").textContent = `${erase ? "消しゴムモード" : "ペンモード"}`;
         $("eraser").classList.toggle("active", erase);
+    }
+
+    function setTextMode(on: boolean) {
+        sketch.setTool({ mode: on ? "text" : "pen" });
+        $("textMode").classList.toggle("active", on);
+        $("eraser").textContent = "ペンモード";
+        $("eraser").classList.remove("active");
     }
 
     $("back").onclick = goManage;
@@ -181,6 +189,21 @@ export function createView({ root }: { root: HTMLElement }) {
         });
 
     $("eraser").onclick = () => setEraserMode(!sketch.tool.erase);
+
+    $("textMode").onclick = () => {
+        if (!sketch.tool.on) setSketchOn(true);
+        setTextMode(sketch.tool.mode !== "text");
+    };
+
+    $<HTMLInputElement>("textColor").oninput = (e) => {
+        sketch.setTool({ textColor: (e.target as HTMLInputElement).value });
+    };
+
+    $<HTMLInputElement>("textSize").oninput = (e) => {
+        const px = Number((e.target as HTMLInputElement).value);
+        $("textSizeVal").textContent = `${px}px`;
+        sketch.setTool({ textSize: px / 800 });
+    };
 
     $("undo").onclick = () => sketch.undo(viewer.currentPage());
     $("redo").onclick = () => sketch.redo(viewer.currentPage());
@@ -218,6 +241,10 @@ export function createView({ root }: { root: HTMLElement }) {
             case "eraser":
                 if (!sketch.tool.on) setSketchOn(true);
                 setEraserMode(true);
+                break;
+            case "text":
+                if (!sketch.tool.on) setSketchOn(true);
+                setTextMode(true);
                 break;
             case "zoomIn":
                 viewer.zoom(1.2);
@@ -311,7 +338,7 @@ export function createView({ root }: { root: HTMLElement }) {
         const prev = (await fetch(
             `/api/pdfs/${state.id}/versions/${from}/sketches`,
         ).then((r) => r.json())) as {
-            pages?: Record<string, Stroke[]>;
+            pages?: Record<string, Annotation[]>;
         };
         const pages = Object.keys(prev.pages ?? {}).filter(
             (k) => (prev.pages?.[k]?.length ?? 0) > 0,
@@ -364,7 +391,7 @@ export function createView({ root }: { root: HTMLElement }) {
             if (sketch.busy(msg.page)) return;
             sketch.setPage(
                 msg.page,
-                Array.isArray(msg.strokes) ? (msg.strokes as Stroke[]) : [],
+                Array.isArray(msg.strokes) ? (msg.strokes as Annotation[]) : [],
             );
             return;
         }

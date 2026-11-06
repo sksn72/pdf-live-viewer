@@ -1,6 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 import type { StrokeMap } from "./sketch-model.js";
-import { renderStrokes } from "./sketch-model.js";
+import { renderAnnotations } from "./sketch-model.js";
 
 const DPR = 2;
 
@@ -31,7 +31,7 @@ export async function exportAnnotated({
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(width * DPR));
         canvas.height = Math.max(1, Math.round(height * DPR));
-        renderStrokes(
+        renderAnnotations(
             canvas.getContext("2d") as CanvasRenderingContext2D,
             strokes,
             canvas.width,
