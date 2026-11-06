@@ -11,10 +11,8 @@ import {
     pushHistory,
     redoEntry,
     renderAnnotations,
-    renderStrokes,
     undoEntry,
     validateAnnotations,
-    validateStrokes,
 } from "../client/sketch-model.ts";
 
 function fakeCtx() {
@@ -61,17 +59,6 @@ test("appendPoint は 0..1 にクランプする", () => {
     assert.deepEqual(s.pts, [[0, 1, 1]]);
 });
 
-test("renderStrokes は点の数-1 回線を引く", () => {
-    const { ctx, rec } = fakeCtx();
-    const s = createStroke({ color: "#e11d48", width: 0.003 });
-    appendPoint(s, 0.1, 0.1, 0.5);
-    appendPoint(s, 0.2, 0.2, 0.5);
-    appendPoint(s, 0.3, 0.3, 0.5);
-    renderStrokes(ctx, [s], 400, 600);
-    assert.equal(rec.filter(([k]) => k === "width").length, 2);
-    assert.equal(rec.find(([k]) => k === "width")?.[1], 0.003 * 400);
-});
-
 test("消しゴムは destination-out で描く", () => {
     const { ctx, rec } = fakeCtx();
     const s = createStroke({ color: "#000000", width: 0.003, erase: true });
@@ -81,37 +68,6 @@ test("消しゴムは destination-out で描く", () => {
     assert.deepEqual(
         rec.find(([k]) => k === "op"),
         ["op", "destination-out"],
-    );
-});
-
-test("validateStrokes", () => {
-    const ok = [{ c: "#e11d48", w: 0.003, e: false, pts: [[0.1, 0.2, 0.5]] }];
-    assert.equal(validateStrokes(ok), true);
-    assert.equal(validateStrokes([]), true);
-    assert.equal(validateStrokes("x"), false);
-    assert.equal(
-        validateStrokes([
-            { c: "red", w: 0.003, e: false, pts: [[0.1, 0.2, 0.5]] },
-        ]),
-        false,
-    );
-    assert.equal(
-        validateStrokes([
-            { c: "#e11d48", w: 9, e: false, pts: [[0.1, 0.2, 0.5]] },
-        ]),
-        false,
-    );
-    assert.equal(
-        validateStrokes([
-            { c: "#e11d48", w: 0.003, e: "no", pts: [[0.1, 0.2, 0.5]] },
-        ]),
-        false,
-    );
-    assert.equal(
-        validateStrokes([
-            { c: "#e11d48", w: 0.003, e: false, pts: [[2, 0.2, 0.5]] },
-        ]),
-        false,
     );
 });
 

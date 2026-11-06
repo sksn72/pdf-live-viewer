@@ -109,18 +109,6 @@ export function drawStrokeSegment(
     ctx.restore();
 }
 
-export function renderStrokes(
-    ctx: CanvasRenderingContext2D,
-    strokes: Stroke[],
-    pageW: number,
-    pageH: number,
-) {
-    for (const s of strokes) {
-        for (let i = 1; i < s.pts.length; i++)
-            drawStrokeSegment(ctx, s, i, pageW, pageH);
-    }
-}
-
 export function renderAnnotations(
     ctx: CanvasRenderingContext2D,
     items: Annotation[],
@@ -279,9 +267,4 @@ function isTextBox(v: unknown): v is TextBox {
 export function validateAnnotations(value: unknown): value is Annotation[] {
     if (!Array.isArray(value) || value.length > 2000) return false;
     return value.every((v: unknown) => isStroke(v) || isTextBox(v));
-}
-
-export function validateStrokes(value: unknown): value is Stroke[] {
-    if (!Array.isArray(value) || value.length > 2000) return false;
-    return value.every((s: unknown) => isStroke(s));
 }
