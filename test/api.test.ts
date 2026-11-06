@@ -255,6 +255,78 @@ test("不正なスケッチは 400", async () => {
     }
 });
 
+test("テキスト混在スケッチを PUT して GET できる", async () => {
+    const s = await startServer();
+    try {
+        const c = await upload(s.base);
+        const annotations = [
+            {
+                c: "#e11d48",
+                w: 0.0036,
+                e: false,
+                pts: [
+                    [0.1, 0.2, 0.5],
+                    [0.2, 0.3, 0.5],
+                ],
+            },
+            {
+                t: "text",
+                id: "a1",
+                x: 0.1,
+                y: 0.1,
+                s: 0.02,
+                c: "#1f2937",
+                text: "混在",
+            },
+        ];
+        const put = await fetch(
+            `${s.base}/api/pdfs/${c.id}/versions/1/sketches/1`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ strokes: annotations }),
+            },
+        );
+        assert.equal(put.status, 204);
+        const got = (await (
+            await fetch(`${s.base}/api/pdfs/${c.id}/versions/1/sketches`)
+        ).json()) as { pages: Record<string, unknown> };
+        assert.deepEqual(got.pages, { 1: annotations });
+    } finally {
+        await s.stop();
+    }
+});
+
+test("s が範囲外のテキストは 400", async () => {
+    const s = await startServer();
+    try {
+        const c = await upload(s.base);
+        const res = await fetch(
+            `${s.base}/api/pdfs/${c.id}/versions/1/sketches/1`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    strokes: [
+                        {
+                            t: "text",
+                            id: "a",
+                            x: 0.1,
+                            y: 0.1,
+                            s: 0.07 + 0.06,
+                            c: "#1f2937",
+                            text: "x",
+                        },
+                    ],
+                }),
+            },
+        );
+        assert.equal(res.status, 400);
+    } finally {
+        await s.stop();
+    }
+});
+
 test("前版からページ指定でコピーできる", async () => {
     const s = await startServer();
     try {
