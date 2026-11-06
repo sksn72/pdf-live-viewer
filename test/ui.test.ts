@@ -40,6 +40,12 @@ test("matchShortcut はツールとズームを返す", () => {
     assert.equal(matchShortcut("_", false, true, false), "zoomOut");
 });
 
+test("matchShortcut は T でテキストを返す", () => {
+    assert.equal(matchShortcut("t", false, false, false), "text");
+    assert.equal(matchShortcut("T", false, false, false), "text");
+    assert.equal(matchShortcut("t", true, false, false), null);
+});
+
 test("matchShortcut は修飾キー付きのツール操作を無視する", () => {
     assert.equal(matchShortcut("b", true, false, false), null);
     assert.equal(matchShortcut("b", false, false, true), null);

@@ -3,6 +3,7 @@ export type Shortcut =
     | "redo"
     | "pen"
     | "eraser"
+    | "text"
     | "zoomIn"
     | "zoomOut";
 
@@ -38,6 +39,7 @@ export function matchShortcut(
     }
     if (k === "b") return "pen";
     if (k === "e") return "eraser";
+    if (k === "t") return "text";
     if (key === "+" || key === "=") return "zoomIn";
     if (key === "-" || key === "_") return "zoomOut";
     return null;

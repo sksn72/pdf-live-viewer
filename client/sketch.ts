@@ -22,9 +22,12 @@ type PageEntry = Entry<Annotation> & {
 export type SketchLayer = ReturnType<typeof createSketchLayer>;
 export type SketchTool = {
     on: boolean;
+    mode: "pen" | "eraser" | "text";
     color: string;
     width: number;
     erase: boolean;
+    textColor: string;
+    textSize: number;
 };
 
 export function createSketchLayer({
@@ -37,9 +40,12 @@ export function createSketchLayer({
     const pages = new Map<number, PageEntry>();
     const tool: SketchTool = {
         on: false,
+        mode: "pen",
         color: "#e11d48",
         width: 0.0036,
         erase: false,
+        textColor: "#1f2937",
+        textSize: 0.02,
     };
     let active: { entry: PageEntry; stroke: Stroke } | null = null;
     let visible = true;
@@ -206,6 +212,10 @@ export function createSketchLayer({
 
     function setTool(patch: Partial<SketchTool>) {
         Object.assign(tool, patch);
+        if (patch.mode) tool.erase = patch.mode === "eraser";
+        else if (patch.erase !== undefined && tool.mode !== "text") {
+            tool.mode = patch.erase ? "eraser" : "pen";
+        }
         for (const entry of pages.values()) {
             entry.canvas.style.pointerEvents = tool.on ? "auto" : "none";
             applyCursor(entry);

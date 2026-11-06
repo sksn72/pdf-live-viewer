@@ -121,6 +121,18 @@ canvas.sketch {
 canvas.sketch[hidden] {
     display: none;
 }
+.text-edit {
+    position: absolute;
+    width: 200px;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1.5px dashed #64748b;
+    border-radius: 4px;
+    font-family: sans-serif;
+    resize: none;
+    outline: none;
+    padding: 2px 4px;
+}
 #banner:not([hidden]) {
     display: flex;
     gap: 12px;

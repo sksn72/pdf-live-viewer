@@ -159,8 +159,16 @@ export function createView({ root }: { root: HTMLElement }) {
 
     function setEraserMode(erase: boolean) {
         sketch.setTool({ erase });
+        $("textMode").classList.remove("active");
         $("eraser").textContent = `${erase ? "消しゴムモード" : "ペンモード"}`;
         $("eraser").classList.toggle("active", erase);
+    }
+
+    function setTextMode(on: boolean) {
+        sketch.setTool({ mode: on ? "text" : "pen" });
+        $("textMode").classList.toggle("active", on);
+        $("eraser").textContent = "ペンモード";
+        $("eraser").classList.remove("active");
     }
 
     $("back").onclick = goManage;
@@ -181,6 +189,21 @@ export function createView({ root }: { root: HTMLElement }) {
         });
 
     $("eraser").onclick = () => setEraserMode(!sketch.tool.erase);
+
+    $("textMode").onclick = () => {
+        if (!sketch.tool.on) setSketchOn(true);
+        setTextMode(sketch.tool.mode !== "text");
+    };
+
+    $<HTMLInputElement>("textColor").oninput = (e) => {
+        sketch.setTool({ textColor: (e.target as HTMLInputElement).value });
+    };
+
+    $<HTMLInputElement>("textSize").oninput = (e) => {
+        const px = Number((e.target as HTMLInputElement).value);
+        $("textSizeVal").textContent = `${px}px`;
+        sketch.setTool({ textSize: px / 800 });
+    };
 
     $("undo").onclick = () => sketch.undo(viewer.currentPage());
     $("redo").onclick = () => sketch.redo(viewer.currentPage());
@@ -218,6 +241,10 @@ export function createView({ root }: { root: HTMLElement }) {
             case "eraser":
                 if (!sketch.tool.on) setSketchOn(true);
                 setEraserMode(true);
+                break;
+            case "text":
+                if (!sketch.tool.on) setSketchOn(true);
+                setTextMode(true);
                 break;
             case "zoomIn":
                 viewer.zoom(1.2);
